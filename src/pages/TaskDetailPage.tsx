@@ -1,12 +1,10 @@
-import {
-  useEffect,
-  useState,
-} from 'react';
+import { useEffect, useState } from 'react';
 import {
   Link,
   useNavigate,
   useParams,
 } from 'react-router';
+import { useAuth } from '../hooks/useAuth';
 import type { Task } from '../models/task.interface';
 import {
   getHttpErrorMessage,
@@ -31,7 +29,7 @@ export function TaskDetailPage() {
     taskId: string;
   }>();
   const navigate = useNavigate();
-
+  const { accessToken, user } = useAuth();
   const [task, setTask] = useState<Task | null>(null);
   const [status, setStatus] =
     useState<DetailStatus>('loading');
@@ -40,10 +38,19 @@ export function TaskDetailPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const [isDeleting, setIsDeleting] =
     useState(false);
+  const canDelete = user?.role === 'admin';
 
   useEffect(() => {
     if (!taskId) {
       setStatus('not-found');
+      return;
+    }
+
+    if (!accessToken) {
+      setStatus('error');
+      setErrorMessage(
+        'La sesión no está disponible.',
+      );
       return;
     }
 
@@ -56,15 +63,13 @@ export function TaskDetailPage() {
       try {
         const response = await getTaskById(
           taskId as string,
+          accessToken as string,
           controller.signal,
         );
-
         setTask(response.data);
         setStatus('success');
       } catch (error) {
-        if (isAbortError(error)) {
-          return;
-        }
+        if (isAbortError(error)) return;
 
         if (isHttpError(error) && error.status === 404) {
           setStatus('not-found');
@@ -79,25 +84,22 @@ export function TaskDetailPage() {
     void loadTask();
 
     return () => controller.abort();
-  }, [taskId, reloadKey]);
+  }, [taskId, accessToken, reloadKey]);
 
   async function handleDelete(): Promise<void> {
-    if (!task) {
+    if (!task || !accessToken || !canDelete) {
       return;
     }
 
     const shouldDelete = window.confirm(
       `¿Eliminar la tarea "${task.title}"?`,
     );
-
-    if (!shouldDelete) {
-      return;
-    }
+    if (!shouldDelete) return;
 
     setIsDeleting(true);
 
     try {
-      await deleteTask(task.id);
+      await deleteTask(task.id, accessToken);
       navigate('/tasks', { replace: true });
     } catch (error) {
       setStatus('error');
@@ -142,9 +144,10 @@ export function TaskDetailPage() {
       aria-labelledby="task-detail-title"
     >
       <p className="section-heading__eyebrow">
-        Detalle remoto
+        Detalle protegido
       </p>
       <h2 id="task-detail-title">{task.title}</h2>
+
       <dl className="task-detail__grid">
         <div>
           <dt>Identificador</dt>
@@ -175,6 +178,13 @@ export function TaskDetailPage() {
           </dd>
         </div>
       </dl>
+
+      {!canDelete && (
+        <p className="permission-note">
+          La eliminación requiere el rol admin.
+        </p>
+      )}
+
       <div className="task-detail__actions">
         <Link
           className="button-link button-link--secondary"
@@ -182,14 +192,18 @@ export function TaskDetailPage() {
         >
           Volver a tareas
         </Link>
-        <button
-          type="button"
-          className="button-danger"
-          disabled={isDeleting}
-          onClick={() => void handleDelete()}
-        >
-          {isDeleting ? 'Eliminando...' : 'Eliminar tarea'}
-        </button>
+        {canDelete && (
+          <button
+            type="button"
+            className="button-danger"
+            disabled={isDeleting}
+            onClick={() => void handleDelete()}
+          >
+            {isDeleting
+              ? 'Eliminando...'
+              : 'Eliminar tarea'}
+          </button>
+        )}
       </div>
     </article>
   );

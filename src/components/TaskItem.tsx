@@ -10,6 +10,7 @@ import {
 
 interface TaskItemProps {
   task: Task;
+  canDelete: boolean;
   onToggleStatus: (task: Task) => Promise<boolean>;
   onEditTask: (
     task: Task,
@@ -20,6 +21,7 @@ interface TaskItemProps {
 
 export function TaskItem({
   task,
+  canDelete,
   onToggleStatus,
   onEditTask,
   onDeleteTask,
@@ -51,7 +53,6 @@ export function TaskItem({
     event: FormEvent<HTMLFormElement>,
   ): Promise<void> {
     event.preventDefault();
-
     const validationMessage =
       validateTaskTitle(draftTitle);
 
@@ -149,6 +150,7 @@ export function TaskItem({
           </>
         )}
       </div>
+
       <div
         className="task-item__actions"
         role="group"
@@ -176,14 +178,16 @@ export function TaskItem({
         >
           Editar
         </button>
-        <button
-          type="button"
-          className="button-danger"
-          disabled={isBusy || isEditing}
-          onClick={() => void handleDelete()}
-        >
-          Eliminar
-        </button>
+        {canDelete && (
+          <button
+            type="button"
+            className="button-danger"
+            disabled={isBusy || isEditing}
+            onClick={() => void handleDelete()}
+          >
+            Eliminar
+          </button>
+        )}
       </div>
     </article>
   );

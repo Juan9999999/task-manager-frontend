@@ -6,6 +6,7 @@ import {
   it,
   vi,
 } from 'vitest';
+import { API_URL } from '../config/env';
 import {
   httpRequest,
   setUnauthorizedHandler,
@@ -40,7 +41,7 @@ describe('http.service', () => {
     const [url, init] = fetchMock.mock.calls[0];
     const headers = new Headers(init?.headers);
 
-    expect(url).toBe('/api/tasks');
+    expect(url).toBe(`${API_URL}/tasks`);
     expect(headers.get('Accept')).toBe(
       'application/json',
     );
